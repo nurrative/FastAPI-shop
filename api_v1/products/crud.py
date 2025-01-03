@@ -1,0 +1,6 @@
+"""
+Create
+Read
+Update
+Delete
+"""
