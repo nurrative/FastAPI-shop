@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING
 from datetime import datetime
 from sqlalchemy import func
 
-from .order_product_association import order_product_association_table
 from .base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,7 +16,7 @@ class Order(Base):
         default=datetime.utcnow,
     )
     products: Mapped[list["Product"]] = relationship(
-        secondary=order_product_association_table,
+        secondary="order_product_association_table",
         back_populates="orders",
         # lazy="noload",
     )
