@@ -1,7 +1,9 @@
 import secrets
+import uuid
+from time import time
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Response, Cookie
+from typing import Annotated, Any
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 router = APIRouter(prefix="/demo_auth", tags=["Demo Auth"])
@@ -22,10 +24,15 @@ def demo_basic_auth_credentials(
 
 username_to_passwords = {"admin": "admin", "john": "password"}
 
+static_auth_token_to_username = {
+    "60aa33ca1d96a17941f8b6763954d4": "admin",
+    "0f3dbfc592441e01ca41d0195f51df6f43": "john",
+}
+
 
 def get_auth_user_username(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],
-):
+) -> str:
     unauthed_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid username or password",
@@ -45,6 +52,17 @@ def get_auth_user_username(
     return credentials.username
 
 
+def get_username_by_static_auth_token(
+    static_token: str = Header(alias="x-auth-token"),
+) -> str:
+    if username := static_auth_token_to_username.get(static_token):
+        return username
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="token invalid",
+    )
+
+
 @router.get("/basic-auth-username/")
 def demo_basic_auth_credentials(
     # credentials: Annotated[HTTPBasicCredentials, Depends(security)]
@@ -53,4 +71,75 @@ def demo_basic_auth_credentials(
     return {
         "message": f"Hi, {auth_username}",
         "username": auth_username,
+    }
+
+
+@router.get("/some-http-header-auth/")
+def demo_auth_some_http_headers(
+    # credentials: Annotated[HTTPBasicCredentials, Depends(security)]
+    username: str = Depends(get_username_by_static_auth_token),
+):
+    return {
+        "message": f"Hi, {username}",
+        "username": username,
+    }
+
+
+COOKIES: dict[str, dict[str, Any]] = {}
+COOKIE_SESSION_ID_KEY = "web-app-session-id"
+
+
+def generate_session_id() -> str:
+    return uuid.uuid4().hex
+
+
+def get_session_data(
+    session_id: str = Cookie(alias=COOKIE_SESSION_ID_KEY),
+) -> dict:
+    if session_id not in COOKIES:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="not authenticated",
+        )
+
+    return COOKIES[session_id]
+
+
+@router.post("/login-cookie/")
+def demo_auth_login_set_cookie(
+    response: Response,
+    username: str = Depends(get_username_by_static_auth_token),
+    # username: str = Depends(get_username_by_static_auth_token),
+):
+    session_id = generate_session_id()
+    COOKIES[session_id] = {
+        "username": username,
+        "login_at": int(time()),
+    }
+    response.set_cookie(COOKIE_SESSION_ID_KEY, session_id)
+    return {"result": "ok"}
+
+
+@router.get("/check-cookie/")
+def demo_auth_check_cookie(
+    user_session_data: dict = Depends(get_session_data),
+):
+    username = user_session_data["username"]
+    return {
+        "message": f"Hello {username}!",
+        **user_session_data,
+    }
+
+
+@router.get("/logout-cookie/")
+def demo_auth_logout_cookie(
+    response: Response,
+    session_id: str = Cookie(alias=COOKIE_SESSION_ID_KEY),
+    user_session_data: dict = Depends(get_session_data),
+):
+    COOKIES.pop(session_id)
+    response.delete_cookie(COOKIE_SESSION_ID_KEY)
+    username = user_session_data["username"]
+    return {
+        "message": f"Bye {username}!",
     }
