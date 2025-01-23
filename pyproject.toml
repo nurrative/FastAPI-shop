@@ -15,6 +15,9 @@ sqlalchemy = {extras = ["asincio"], version = "^2.0.36"}
 aiosqlite = "^0.20.0"
 pydantic-settings = "^2.7.1"
 alembic = "^1.14.0"
+pyjwt = {extras = ["crypto"], version = "^2.10.1"}
+bcrypt = "^4.2.1"
+python-multipart = "^0.0.20"
 
 
 [tool.poetry.group.dev.dependencies]
