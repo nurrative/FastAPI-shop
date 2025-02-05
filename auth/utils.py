@@ -1,10 +1,8 @@
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Optional
 
 import jwt
 import bcrypt
-import timedelta
 
 from core.config import Settings, settings
 
@@ -17,21 +15,23 @@ def encode_jwt(
     payload: dict,
     private_key: str = settings.auth_jwt.private_key_path.read_text(),
     algorithm: str = settings.auth_jwt.algorithm,
-    expire_timedelta: Optional[timedelta] = None,
     expire_minutes: int = settings.auth_jwt.access_token_expire_minutes,
-):
+    expire_timedelta: Optional[timedelta] = None,
+) -> str:
     to_encode = payload.copy()
     now = datetime.utcnow()
     if expire_timedelta:
         expire = now + expire_timedelta
     else:
         expire = now + timedelta(minutes=expire_minutes)
-    to_encode.update(exp=expire, iat=now)
+    to_encode.update(
+        exp=expire,
+        iat=now,
+    )
     encoded = jwt.encode(
         to_encode,
-        payload,
         private_key,
-        algorithm,
+        algorithm=algorithm,
     )
     return encoded
 
