@@ -67,15 +67,8 @@ class UserGetterFromToken:
 
     def __call__(self, payload: dict = Depends(get_current_token_payload)):
         validate_token_type(payload, self.token_type)
-        return get_user_by_token_sub()
+        return get_user_by_token_sub(payload)
 
 
 get_current_auth_user = get_auth_user_from_token_of_type(ACCESS_TOKEN_TYPE)
 get_current_auth_user_for_refresh = UserGetterFromToken(REFRESH_TOKEN_TYPE)
-
-
-def get_current_auth_user_for_refresh(
-    payload: dict = Depends(get_current_token_payload),
-) -> UserSchema:
-    validate_token_type(payload, REFRESH_TOKEN_TYPE)
-    return get_current_auth_user_for_refresh(payload)
